@@ -1,0 +1,41 @@
+version: '3'
+
+services:
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    hostname: nginx
+    volumes:
+      - ./ssl:/etc/nginx/ssl
+      - ./services-local.conf:/etc/nginx/nginx.conf
+      - ui:/service/public:ro
+    ports:
+      - "80:80"
+      - '443:443'
+    depends_on:
+      - main
+    links:
+      - main:main
+    networks:
+      - web
+
+  main:
+    image: ${DOCKER_TAG}
+    container_name: main
+    env_file:
+      - .env.local
+    ports:
+      - 4443:4443
+      - "40000-40099:40000-40099"
+    networks:
+      - web
+    volumes:
+      - ui:/service/public:ro
+      - ./ssl:/service/certs:ro
+
+volumes:     
+  ui: {}
+
+networks:
+  web:

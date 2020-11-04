@@ -1,0 +1,70 @@
+version: '3'
+
+services:
+
+  logger:
+    image: umputun/docker-logger
+    container_name: "logger"
+    hostname: "logger"
+    restart: unless-stopped
+    logging: &default_logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    environment:
+        - LOG_FILES=true
+        - LOG_SYSLOG=false
+        - EXCLUDE=docker-logger
+        - MAX_FILES=10
+        - MAX_SIZE=50
+        - MAX_AGE=20
+        - DEBUG=false
+    volumes:
+        - ./logs:/srv/logs
+        - /var/run/docker.sock:/var/run/docker.sock
+
+  nginx:
+    image: umputun/nginx-le:latest
+    container_name: nginx
+    hostname: nginx
+    restart: unless-stopped
+    logging: *default_logging
+    volumes:
+      - ./ssl:/etc/nginx/ssl
+      - ./services.conf:/etc/nginx/services.conf
+      - ui:/service/public:ro
+    ports:
+      - "80:80"
+      - '443:443'
+    depends_on:
+      - main
+    environment:
+      - TZ=UTC
+      - LETSENCRYPT=true
+      - LE_EMAIL=${YOUR_EMAIL}
+      - LE_FQDN=${DOMAIN}
+    network_mode: host
+    ports:
+      - "80:80"
+      - "443:443"
+
+  main:
+    container_name: main
+    image: ${DOCKER_TAG}
+    restart: unless-stopped
+    logging: *default_logging
+    env_file:
+      - .env
+    volumes:
+      - ui:/service/public:ro
+      - ./ssl:/service/certs:ro
+    ports:
+      - "4443:4443"
+      - "40000-49999:40000-49999/udp"
+    network_mode: "host"
+    stdin_open: true
+    tty: true
+
+volumes:     
+  ui: {} 
